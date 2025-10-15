@@ -1,11 +1,10 @@
 package sergisa.drawer;
 
 import javax.swing.*;
-import java.awt.Rectangle;
 import java.awt.*;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.geom.Ellipse2D;
 import java.awt.geom.RectangularShape;
 import java.awt.geom.RoundRectangle2D;
 import java.util.Vector;
@@ -21,9 +20,11 @@ public class Canvas extends JComponent {
 
     public Canvas() {
         setFocusable(true);
-        enableEvents(AWTEvent.MOUSE_EVENT_MASK | AWTEvent.MOUSE_MOTION_EVENT_MASK | AWTEvent.KEY_EVENT_MASK);
-        drawableShapes.add(new RoundRectangle2D.Double(100, 100, 30, 20, 5, 5));
-        drawableShapes.add(new RoundRectangle2D.Double(300, 300, 30, 30, 5, 5));
+        CanvasDragListener dragListener = new CanvasDragListener();
+        addMouseListener(dragListener);
+        addMouseMotionListener(dragListener);
+        drawableShapes.add(new RoundRectangle2D.Double(100, 100, 30, 20, 8, 8));
+        drawableShapes.add(new RoundRectangle2D.Double(300, 300, 30, 30, 8, 8));
     }
 
     @Override
@@ -76,45 +77,6 @@ public class Canvas extends JComponent {
         );
     }
 
-    @Override
-    synchronized protected void processMouseMotionEvent(MouseEvent evt) {
-        x = evt.getX();
-        y = evt.getY();
-        if (evt.getID() == MouseEvent.MOUSE_MOVED) {
-            if (showCrosshair) repaint();
-        } else if (evt.getID() == MouseEvent.MOUSE_DRAGGED) {
-            if (activeElement != null) {
-                RectangularShape component = (RectangularShape) activeElement;
-                int x = evt.getX();
-                int y = evt.getY();
-                component.setFrame(x, y, component.getBounds().getWidth(), component.getBounds().getHeight());
-                repaint();
-            }
-        }
-        super.processMouseMotionEvent(evt);
-    }
-
-
-    @Override
-    synchronized protected void processMouseEvent(MouseEvent evt) {
-        if (evt.getID() == MouseEvent.MOUSE_EXITED) {
-            this.transferFocus();
-        } else {
-            this.grabFocus();
-
-        }
-        if (evt.getID() == MouseEvent.MOUSE_PRESSED) {
-            Shape currentShape = getShape(evt.getX(), evt.getY());
-            if (getShape(evt.getX(), evt.getY()) != null) {
-                activeElement = currentShape;
-            } else {
-                printPoint(evt.getX(), evt.getY());
-            }
-            repaint();
-        }
-        super.processMouseEvent(evt);
-    }
-
     private void replaceShape(Shape shape, int x, int y) {
         RectangularShape currentshape = (RectangularShape) shape;
         Rectangle oldBounds = currentshape.getBounds();
@@ -150,14 +112,6 @@ public class Canvas extends JComponent {
         super.processKeyEvent(e);
     }
 
-    private void printPoint(int x, int y) {
-        addShape(new Ellipse2D.Double(x - 2.5, y - 2.5, 5, 5));
-    }
-
-    public void addShape(Shape shape) {
-        drawableShapes.add(shape);
-    }
-
     public Shape getShape(int mouseX, int mouseY) {
         int elementsCount = (drawableShapes == null) ? -1 : drawableShapes.size();
         for (int i = elementsCount - 1; i >= 0; i--) {
@@ -188,5 +142,43 @@ public class Canvas extends JComponent {
     public void setShowGrid(boolean showGrid) {
         this.showGrid = showGrid;
         if (showGrid) repaint();
+    }
+
+    public class CanvasDragListener extends MouseAdapter {
+        Point oldPoint;
+
+        @Override
+        public void mousePressed(MouseEvent e) {
+            oldPoint = e.getPoint();
+        }
+
+        @Override
+        public void mouseDragged(MouseEvent e) {
+            double dx = e.getX() - oldPoint.x;
+            double dy = e.getY() - oldPoint.y;
+            ((RectangularShape) activeElement).setFrame(
+                    activeElement.getBounds().x + dx,
+                    activeElement.getBounds().y + dy,
+                    activeElement.getBounds().width,
+                    activeElement.getBounds().height
+            );
+            oldPoint = e.getPoint();
+            repaint();
+        }
+
+        @Override
+        public void mouseMoved(MouseEvent e) {
+            super.mouseMoved(e);
+        }
+
+        @Override
+        public void mouseClicked(MouseEvent evt) {
+            Shape currentShape = getShape(evt.getX(), evt.getY());
+            if (currentShape != null) {
+                activeElement = currentShape;
+            }
+
+            repaint();
+        }
     }
 }
