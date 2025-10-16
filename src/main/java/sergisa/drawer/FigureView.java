@@ -1,29 +1,62 @@
 package sergisa.drawer;
 
+import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
-import com.intellij.uiDesigner.core.Spacer;
+import sergisa.drawer.settings.SettingChangeListener;
+import sergisa.drawer.settings.Settings;
+import sergisa.drawer.settings.SettingsForm;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ItemEvent;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
 
 public class FigureView extends JFrame {
     private JPanel root;
     public Canvas canvas1;
-    public JCheckBox showCrosshairCheckBox;
-    private JCheckBox showGridCheckBox;
-    private JButton showPreview;
-
+    private JButton showSettingsButton;
+    private JToolBar toolbar;
+    private JToggleButton gridToggleButton;
+    SettingsForm settingsForm;
 
     public FigureView() {
         $$$setupUI$$$();
-        setContentPane(root);
+        //setUndecorated(true);
         setSize(600, 600);
+        //setShape(new RoundRectangle2D.Double(10, 10, 600, 600, 20, 20));
+        setLocationByPlatform(true);
+        showSettingsButton.setIcon(new FlatSVGIcon("sergisa/drawer/inlineSettings.svg"));
+        gridToggleButton.setIcon(new FlatSVGIcon("sergisa/drawer/icons/grid.svg"));
+        gridToggleButton.setSelected(Settings.getInstance().getBoolean("grid.show"));
+        setContentPane(root);
         setVisible(true);
+        setTitle("Рисовалка для квадратиков");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        showCrosshairCheckBox.addItemListener(e -> canvas1.setShowCrosshair(e.getStateChange() == ItemEvent.SELECTED));
-        showGridCheckBox.addItemListener(e -> canvas1.setShowGrid(e.getStateChange() == ItemEvent.SELECTED));
+        setBackground(new Color(0xF2EEE9));
+        showSettingsButton.addActionListener(e -> settingsForm = new SettingsForm());
+        Settings.getInstance().addSettingChangeListener(new SettingChangeListener() {
+            @Override
+            public <T> void onValueChanged(T value) {
+                if (Settings.getInstance().getBoolean("cursor.show")) {
+                    canvas1.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+                } else {
+                    canvas1.setCursor(getToolkit().createCustomCursor(
+                            new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB),
+                            new Point(),
+                            null));
+
+                }
+                repaint();
+            }
+        });
+        gridToggleButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Settings.getInstance().putBoolean("grid.show", gridToggleButton.isSelected());
+            }
+        });
     }
 
     private void createUIComponents() {
@@ -40,20 +73,20 @@ public class FigureView extends JFrame {
     private void $$$setupUI$$$() {
         createUIComponents();
         root = new JPanel();
-        root.setLayout(new GridLayoutManager(4, 2, new Insets(0, 0, 0, 0), -1, -1));
-        root.add(canvas1, new GridConstraints(0, 0, 4, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
-        showCrosshairCheckBox = new JCheckBox();
-        showCrosshairCheckBox.setHorizontalAlignment(4);
-        showCrosshairCheckBox.setText("Показывать координатор");
-        root.add(showCrosshairCheckBox, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        showGridCheckBox = new JCheckBox();
-        showGridCheckBox.setText("Показывать сетку");
-        root.add(showGridCheckBox, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        showPreview = new JButton();
-        showPreview.setText("Показать предпросмотр");
-        root.add(showPreview, new GridConstraints(2, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 1, false));
-        final Spacer spacer1 = new Spacer();
-        root.add(spacer1, new GridConstraints(3, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1, GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
+        root.setLayout(new GridLayoutManager(2, 1, new Insets(0, 0, 0, 0), 0, 0));
+        root.add(canvas1, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
+        toolbar = new JToolBar();
+        toolbar.setBorderPainted(false);
+        toolbar.setFloatable(true);
+        toolbar.setRollover(true);
+        toolbar.putClientProperty("JToolBar.isRollover", Boolean.TRUE);
+        root.add(toolbar, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 20), null, 0, false));
+        showSettingsButton = new JButton();
+        showSettingsButton.setText("");
+        showSettingsButton.setToolTipText("Настройки");
+        toolbar.add(showSettingsButton);
+        gridToggleButton = new JToggleButton();
+        toolbar.add(gridToggleButton);
     }
 
     /**

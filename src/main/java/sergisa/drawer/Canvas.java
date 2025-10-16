@@ -1,51 +1,78 @@
 package sergisa.drawer;
 
+
+import sergisa.drawer.geometry.GraphicalNode;
+import sergisa.drawer.geometry.PlacementAdapter;
+import sergisa.drawer.settings.Settings;
+
 import javax.swing.*;
-import java.awt.Rectangle;
+import javax.swing.event.MouseInputAdapter;
 import java.awt.*;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.RectangularShape;
-import java.awt.geom.RoundRectangle2D;
-import java.util.Vector;
+import java.awt.image.BufferedImage;
 
-public class Canvas extends JComponent {
-    int x;
-    int y;
-    int pad = 9;
-    Vector<Shape> drawableShapes = new Vector<>();
-    Shape activeElement = null;
+public class Canvas extends JPanel {
     public boolean showCrosshair = false;
     public boolean showGrid = false;
+    Crosshair cross;
+    Color gridColor = Colors.pink;
+    Color crosshairColor = Colors.Blue;
+    Color outlineColor = Colors.DarkBlue;
+    Color backgroundColor = Colors.Cream;
+    Color objectColor = Colors.Blue;
+    Settings settings = Settings.getInstance();
+    //ClassSettingPanel floatingPanel = new ClassSettingPanel();
 
     public Canvas() {
+        setBackground(backgroundColor);
         setFocusable(true);
-        enableEvents(AWTEvent.MOUSE_EVENT_MASK | AWTEvent.MOUSE_MOTION_EVENT_MASK | AWTEvent.KEY_EVENT_MASK);
-        drawableShapes.add(new RoundRectangle2D.Double(100, 100, 30, 20, 5, 5));
-        drawableShapes.add(new RoundRectangle2D.Double(300, 300, 30, 30, 5, 5));
+        DragListener drag = new DragListener();
+        addMouseListener(drag);
+        addMouseMotionListener(drag);
+        enableEvents(AWTEvent.MOUSE_EVENT_MASK | AWTEvent.KEY_EVENT_MASK | AWTEvent.MOUSE_MOTION_EVENT_MASK);
+
+        /*NamedNode node1 = new NamedNode(100, 100, 30, 20);
+        ClassNode node2 = new ClassNode(300, 300, 30, 30, 9);
+        node2.setFillColor(Colors.Yellow);
+        node1.addChildNode(node2.setNodeName("Parent"));
+        nodeManager.addNode(node1);
+        nodeManager.addNode(node2);
+        nodeManager.addConnection(node1, node2, NodeManager.ConnectionType.AGGREGATION);*/
+
+        updateOpts();
+        setLayout(null);
+        if (settings.getBoolean("cursor.show")) {
+            setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        } else {
+            setCursor(getToolkit().createCustomCursor(
+                    new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB),
+                    new Point(),
+                    null));
+
+        }
+    }
+
+    private void updateOpts() {
+        showCrosshair = settings.getBoolean("crosshair.show");
+        showGrid = settings.getBoolean("grid.show");
     }
 
     @Override
-    public void paintComponent(Graphics g) {
+    public synchronized void paintComponent(Graphics g) {
         super.paintComponent(g);
+        updateOpts();
         ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         if (showGrid) paintGrid(g);
-        for (Shape s : drawableShapes) {
-            g.setColor(new Color(0xF6FF00));
-            ((Graphics2D) g).fill(s);
-        }
-        if (activeElement != null) {
-            g.setColor(new Color(0x00A137));
-            Rectangle outerRect = getActiveElementOuterRectangle(activeElement.getBounds(), 4);
-            ((Graphics2D) g).draw(outerRect);
-        }
-        if (showCrosshair) paintCrossHair(g);
+
+        if (showCrosshair && cross != null) (cross).paint(g);
     }
 
     public void paintGrid(Graphics g) {
-        int step = 20;
-        g.setColor(new Color(0x2AD5A5FF, true));
+        int step = settings.getInt("grid.step");
+        g.setColor(gridColor);
         ((Graphics2D) g).setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 1, new float[]{15f, 5f}, 5f));
         for (int i = 0; i < getWidth(); i += step) {
             g.drawLine(i, 0, i, getHeight());
@@ -54,17 +81,6 @@ public class Canvas extends JComponent {
             g.drawLine(0, i, getWidth(), i);
         }
         ((Graphics2D) g).setStroke(new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1, null, 5f));
-    }
-
-    public void paintCrossHair(Graphics g) {
-        if (showCrosshair) {
-            g.setColor(new Color(0x12FF00));
-            g.drawLine(x, 0, x, y - pad);
-            g.drawLine(x, y + pad, x, getHeight());
-
-            g.drawLine(0, y, x - pad, y);
-            g.drawLine(x + pad, y, getWidth(), y);
-        }
     }
 
     private Rectangle getActiveElementOuterRectangle(Rectangle activeElementBounds, int pad) {
@@ -76,101 +92,76 @@ public class Canvas extends JComponent {
         );
     }
 
-    @Override
-    synchronized protected void processMouseMotionEvent(MouseEvent evt) {
-        x = evt.getX();
-        y = evt.getY();
-        if (evt.getID() == MouseEvent.MOUSE_MOVED) {
-            if (showCrosshair) repaint();
-        } else if (evt.getID() == MouseEvent.MOUSE_DRAGGED) {
-            if (activeElement != null) {
-                RectangularShape component = (RectangularShape) activeElement;
-                int x = evt.getX();
-                int y = evt.getY();
-                component.setFrame(x, y, component.getBounds().getWidth(), component.getBounds().getHeight());
-                repaint();
-            }
-        }
-        super.processMouseMotionEvent(evt);
-    }
 
+    @Override
+    protected void processMouseMotionEvent(MouseEvent me) {
+        if (showCrosshair) {
+            if (cross == null) {
+                cross = new Crosshair(me.getX(), me.getY());
+            } else {
+                cross.setXY(me.getX(), me.getY());
+            }
+            setShowCrosshair(true);
+            repaint();
+        }
+        super.processMouseMotionEvent(me);
+    }
 
     @Override
     synchronized protected void processMouseEvent(MouseEvent evt) {
         if (evt.getID() == MouseEvent.MOUSE_EXITED) {
-            this.transferFocus();
+            //this.transferFocus();
         } else {
             this.grabFocus();
-
         }
-        if (evt.getID() == MouseEvent.MOUSE_PRESSED) {
-            Shape currentShape = getShape(evt.getX(), evt.getY());
-            if (getShape(evt.getX(), evt.getY()) != null) {
-                activeElement = currentShape;
-            } else {
-                printPoint(evt.getX(), evt.getY());
-            }
-            repaint();
+        if (evt.getID() == MouseEvent.MOUSE_CLICKED) {
+            /*GraphicalNode currentShape = nodeManager.getNodeAtPosition(evt.getX(), evt.getY());
+            if (currentShape != null) {
+                if (nodeManager.getActiveElement() == currentShape) {
+                    nodeManager.unsetActiveElement();
+                } else {
+                    nodeManager.setActiveElement(currentShape);
+                    buildPanelForActiveElement(currentShape);
+                }
+                repaint();
+            }*/
         }
         super.processMouseEvent(evt);
     }
 
-    private void replaceShape(Shape shape, int x, int y) {
-        RectangularShape currentshape = (RectangularShape) shape;
-        Rectangle oldBounds = currentshape.getBounds();
-        currentshape.setFrame(
-                x,
-                y,
-                oldBounds.getWidth(),
-                oldBounds.getHeight()
-        );
-    }
 
     @Override
     protected void processKeyEvent(KeyEvent e) {
         int moveStep = 20;
         if ((e.getID() == KeyEvent.KEY_PRESSED) && (e.getModifiersEx() == 0)) {
-            if (activeElement != null) {
-                Rectangle oldBounds = activeElement.getBounds();
+            /*if (nodeManager.hasActiveElement()) {
+                Rectangle oldBounds = nodeManager.getActiveElement().getBounds();
+                int newX = oldBounds.x;
+                int newY = oldBounds.y;
                 if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
-                    replaceShape(activeElement, oldBounds.x + moveStep, oldBounds.y);
+                    newX += moveStep;
                 }
                 if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-                    replaceShape(activeElement, oldBounds.x - moveStep, oldBounds.y);
+                    newX -= moveStep;
                 }
                 if (e.getKeyCode() == KeyEvent.VK_UP) {
-                    replaceShape(activeElement, oldBounds.x, oldBounds.y - moveStep);
+                    newY -= moveStep;
                 }
                 if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-                    replaceShape(activeElement, oldBounds.x, oldBounds.y + moveStep);
+                    newY += moveStep;
                 }
-            }
+                //nodeManager.getActiveElement().setX(newX);
+                //nodeManager.getActiveElement().setY(newY);
+                //replaceShape(nodeManager.getActiveElement(), newX, newY);
+                if (showCrosshair && cross != null) {
+                    cross.setXY(newX / 2, newY / 2);
+                }
+            }*/
             repaint();
         }
         super.processKeyEvent(e);
     }
 
-    private void printPoint(int x, int y) {
-        addShape(new Ellipse2D.Double(x - 2.5, y - 2.5, 5, 5));
-    }
-
-    public void addShape(Shape shape) {
-        drawableShapes.add(shape);
-    }
-
-    public Shape getShape(int mouseX, int mouseY) {
-        int elementsCount = (drawableShapes == null) ? -1 : drawableShapes.size();
-        for (int i = elementsCount - 1; i >= 0; i--) {
-            Shape s = drawableShapes.elementAt(i);
-            double xmin = (s.getBounds().x);
-            double ymin = (s.getBounds().y);
-            double xmax = ((s.getBounds().x + s.getBounds().width)) - 1;
-            double ymax = ((s.getBounds().y + s.getBounds().height)) - 1;
-            if (mouseX >= xmin && mouseX <= xmax && mouseY >= ymin && mouseY <= ymax)
-                return s;
-        }
-        return null;
-    }
 
     public boolean isShowCrosshair() {
         return showCrosshair;
@@ -187,6 +178,57 @@ public class Canvas extends JComponent {
 
     public void setShowGrid(boolean showGrid) {
         this.showGrid = showGrid;
-        if (showGrid) repaint();
+        repaint();
     }
+
+    public class DragListener extends MouseInputAdapter {
+        Point firstPressPoint;
+        GraphicalNode draggingElement;
+        PlacementAdapter adapter;
+
+        public DragListener() {
+
+        }
+
+        @Override
+        public void mouseClicked(MouseEvent e) {
+            //nodeManager.setActiveElement(nodeManager.getNodeAtPosition(e.getPoint()));
+            super.mouseClicked(e);
+        }
+
+        public void mousePressed(MouseEvent me) {
+            firstPressPoint = me.getPoint();
+            /*draggingElement = nodeManager.getNodeAtPosition(me.getX(), me.getY());
+            if (draggingElement != null) {
+                //nodeManager.setActiveElement(draggingElement);
+                adapter = new PlacementAdapter(
+                        me.getX() - draggingElement.getX(),
+                        me.getY() - draggingElement.getY(),
+                        draggingElement
+                );
+            }*/
+        }
+
+        public void mouseDragged(MouseEvent me) {
+            if (me.getModifiersEx() == InputEvent.BUTTON1_DOWN_MASK) {
+                if (cross != null) cross.setXY(me.getX(), me.getY());
+                if (draggingElement != null) {
+                    adapter.setX(me.getX());
+                    adapter.setY(me.getY());
+                }
+                if (cross != null || draggingElement != null) repaint();
+            }
+        }
+        private void dragObject(GraphicalNode draggingNode){
+
+        }
+        @Override
+        public void mouseReleased(MouseEvent e) {
+            if (draggingElement != null) {
+                repaint();
+            }
+            super.mouseReleased(e);
+        }
+    }
+
 }
