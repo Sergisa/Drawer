@@ -62,7 +62,7 @@
           <text value="Показывать сетку"/>
         </properties>
       </component>
-      <component id="8a307" class="sergisa.drawer.ui.TitleLabel" binding="titleLabel1" custom-create="true" default-binding="true">
+      <component id="8a307" class="sergisa.drawer.settings.ui.TitleLabel" binding="titleLabel1" custom-create="true" default-binding="true">
         <constraints>
           <grid row="6" column="0" row-span="1" col-span="3" vsize-policy="3" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false">
             <preferred-size width="114" height="34"/>
@@ -75,7 +75,7 @@
           <text value="Настройки графики"/>
         </properties>
       </component>
-      <component id="3b110" class="sergisa.drawer.ui.TitleLabel" binding="titleLabel2" custom-create="true">
+      <component id="3b110" class="sergisa.drawer.settings.ui.TitleLabel" binding="titleLabel2" custom-create="true">
         <constraints>
           <grid row="0" column="0" row-span="1" col-span="3" vsize-policy="3" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
         </constraints>

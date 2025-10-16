@@ -3,7 +3,7 @@ package sergisa.drawer.settings;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
-import sergisa.drawer.ui.TitleLabel;
+import sergisa.drawer.settings.ui.TitleLabel;
 
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;

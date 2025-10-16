@@ -1,17 +1,19 @@
 package sergisa.drawer;
 
 
-import sergisa.drawer.geometry.GraphicalNode;
 import sergisa.drawer.geometry.PlacementAdapter;
 import sergisa.drawer.settings.Settings;
 
 import javax.swing.*;
 import javax.swing.event.MouseInputAdapter;
 import java.awt.*;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
+import java.awt.geom.RectangularShape;
+import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Canvas extends JPanel {
     public boolean showCrosshair = false;
@@ -23,23 +25,22 @@ public class Canvas extends JPanel {
     Color backgroundColor = Colors.Cream;
     Color objectColor = Colors.Blue;
     Settings settings = Settings.getInstance();
-    //ClassSettingPanel floatingPanel = new ClassSettingPanel();
+    List<RectangularShape> drawingObjects;
+    Shape focusedObject;
+    private int scale = 1;
 
     public Canvas() {
         setBackground(backgroundColor);
         setFocusable(true);
-        DragListener drag = new DragListener();
-        addMouseListener(drag);
-        addMouseMotionListener(drag);
-        enableEvents(AWTEvent.MOUSE_EVENT_MASK | AWTEvent.KEY_EVENT_MASK | AWTEvent.MOUSE_MOTION_EVENT_MASK);
-
-        /*NamedNode node1 = new NamedNode(100, 100, 30, 20);
-        ClassNode node2 = new ClassNode(300, 300, 30, 30, 9);
-        node2.setFillColor(Colors.Yellow);
-        node1.addChildNode(node2.setNodeName("Parent"));
-        nodeManager.addNode(node1);
-        nodeManager.addNode(node2);
-        nodeManager.addConnection(node1, node2, NodeManager.ConnectionType.AGGREGATION);*/
+        DragListener dragListener = new DragListener();
+        addMouseListener(dragListener);
+        addMouseMotionListener(dragListener);
+        addMouseWheelListener(dragListener);
+        drawingObjects = new ArrayList<>();
+        RoundRectangle2D.Double rectangle = new RoundRectangle2D.Double(50, 200, 50, 80, 9, 9);
+        RoundRectangle2D.Double rectangle2 = new RoundRectangle2D.Double(200, 300, 50, 80, 9, 9);
+        drawingObjects.add(rectangle);
+        drawingObjects.add(rectangle2);
 
         updateOpts();
         setLayout(null);
@@ -49,8 +50,8 @@ public class Canvas extends JPanel {
             setCursor(getToolkit().createCustomCursor(
                     new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB),
                     new Point(),
-                    null));
-
+                    null
+            ));
         }
     }
 
@@ -62,12 +63,20 @@ public class Canvas extends JPanel {
     @Override
     public synchronized void paintComponent(Graphics g) {
         super.paintComponent(g);
+        Graphics2D g2d = (Graphics2D) g;
         updateOpts();
-        ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         if (showGrid) paintGrid(g);
+        g2d.scale(scale, scale);
+        for (Shape drawingObject : drawingObjects) {
+            g.setColor(objectColor);
+            g2d.fill(drawingObject);
 
-        if (showCrosshair && cross != null) (cross).paint(g);
+            g.setColor(Colors.Red);
+            g2d.draw(drawingObject);
+        }
+        if (showCrosshair && cross != null) cross.paint(g);
     }
 
     public void paintGrid(Graphics g) {
@@ -82,16 +91,6 @@ public class Canvas extends JPanel {
         }
         ((Graphics2D) g).setStroke(new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1, null, 5f));
     }
-
-    private Rectangle getActiveElementOuterRectangle(Rectangle activeElementBounds, int pad) {
-        return new Rectangle(
-                activeElementBounds.x - pad,
-                activeElementBounds.y - pad,
-                activeElementBounds.width + 2 * pad,
-                activeElementBounds.height + 2 * pad
-        );
-    }
-
 
     @Override
     protected void processMouseMotionEvent(MouseEvent me) {
@@ -109,59 +108,11 @@ public class Canvas extends JPanel {
 
     @Override
     synchronized protected void processMouseEvent(MouseEvent evt) {
-        if (evt.getID() == MouseEvent.MOUSE_EXITED) {
-            //this.transferFocus();
-        } else {
+        if (evt.getID() == MouseEvent.MOUSE_ENTERED) {
             this.grabFocus();
-        }
-        if (evt.getID() == MouseEvent.MOUSE_CLICKED) {
-            /*GraphicalNode currentShape = nodeManager.getNodeAtPosition(evt.getX(), evt.getY());
-            if (currentShape != null) {
-                if (nodeManager.getActiveElement() == currentShape) {
-                    nodeManager.unsetActiveElement();
-                } else {
-                    nodeManager.setActiveElement(currentShape);
-                    buildPanelForActiveElement(currentShape);
-                }
-                repaint();
-            }*/
         }
         super.processMouseEvent(evt);
     }
-
-
-    @Override
-    protected void processKeyEvent(KeyEvent e) {
-        int moveStep = 20;
-        if ((e.getID() == KeyEvent.KEY_PRESSED) && (e.getModifiersEx() == 0)) {
-            /*if (nodeManager.hasActiveElement()) {
-                Rectangle oldBounds = nodeManager.getActiveElement().getBounds();
-                int newX = oldBounds.x;
-                int newY = oldBounds.y;
-                if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
-                    newX += moveStep;
-                }
-                if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-                    newX -= moveStep;
-                }
-                if (e.getKeyCode() == KeyEvent.VK_UP) {
-                    newY -= moveStep;
-                }
-                if (e.getKeyCode() == KeyEvent.VK_DOWN) {
-                    newY += moveStep;
-                }
-                //nodeManager.getActiveElement().setX(newX);
-                //nodeManager.getActiveElement().setY(newY);
-                //replaceShape(nodeManager.getActiveElement(), newX, newY);
-                if (showCrosshair && cross != null) {
-                    cross.setXY(newX / 2, newY / 2);
-                }
-            }*/
-            repaint();
-        }
-        super.processKeyEvent(e);
-    }
-
 
     public boolean isShowCrosshair() {
         return showCrosshair;
@@ -181,9 +132,24 @@ public class Canvas extends JPanel {
         repaint();
     }
 
+    public RectangularShape getNodeAtPosition(int x, int y) {
+        for (RectangularShape drawingObject : drawingObjects) {
+            if (drawingObject.getBounds().contains(x, y)) {
+                return drawingObject;
+            }
+        }
+        return null;
+    }
+
+    private void shiftShape(RectangularShape shape, int dx, int dy) {
+        Rectangle oldBounds = shape.getBounds();
+        oldBounds.translate(dx, dy);
+        shape.setFrame(oldBounds);
+    }
+
     public class DragListener extends MouseInputAdapter {
-        Point firstPressPoint;
-        GraphicalNode draggingElement;
+        Point lastPressPoint;
+        RectangularShape draggingElement;
         PlacementAdapter adapter;
 
         public DragListener() {
@@ -196,39 +162,41 @@ public class Canvas extends JPanel {
             super.mouseClicked(e);
         }
 
-        public void mousePressed(MouseEvent me) {
-            firstPressPoint = me.getPoint();
-            /*draggingElement = nodeManager.getNodeAtPosition(me.getX(), me.getY());
-            if (draggingElement != null) {
-                //nodeManager.setActiveElement(draggingElement);
-                adapter = new PlacementAdapter(
-                        me.getX() - draggingElement.getX(),
-                        me.getY() - draggingElement.getY(),
-                        draggingElement
-                );
-            }*/
+        public void mousePressed(MouseEvent evt) {
+            lastPressPoint = evt.getPoint();
+            draggingElement = getNodeAtPosition(evt.getX(), evt.getY());
         }
 
-        public void mouseDragged(MouseEvent me) {
-            if (me.getModifiersEx() == InputEvent.BUTTON1_DOWN_MASK) {
-                if (cross != null) cross.setXY(me.getX(), me.getY());
+        @Override
+        public void mouseMoved(MouseEvent e) {
+
+        }
+
+        public void mouseDragged(MouseEvent e) {
+            int dx = e.getX() - lastPressPoint.x;
+            int dy = e.getY() - lastPressPoint.y;
+            if (SwingUtilities.isRightMouseButton(e)) {
+                System.out.print("MOVE");
+            } else if (SwingUtilities.isLeftMouseButton(e)) {
                 if (draggingElement != null) {
-                    adapter.setX(me.getX());
-                    adapter.setY(me.getY());
+                    shiftShape(draggingElement, dx, dy);
+                    repaint();
                 }
-                if (cross != null || draggingElement != null) repaint();
             }
+            lastPressPoint = e.getPoint();
         }
-        private void dragObject(GraphicalNode draggingNode){
 
-        }
         @Override
         public void mouseReleased(MouseEvent e) {
-            if (draggingElement != null) {
-                repaint();
-            }
             super.mouseReleased(e);
         }
-    }
 
+        @Override
+        public void mouseWheelMoved(MouseWheelEvent e) {
+            int scr = e.getUnitsToScroll();
+            scale += scr;
+            repaint();
+            super.mouseWheelMoved(e);
+        }
+    }
 }

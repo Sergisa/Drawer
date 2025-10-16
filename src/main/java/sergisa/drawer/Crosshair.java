@@ -10,13 +10,8 @@ public class Crosshair {
     boolean visible = false;
 
     public Crosshair(int x, int y) {
-        this();
         this.x = x;
         this.y = y;
-    }
-
-    private Crosshair() {
-
     }
 
     protected void paint(Graphics g) {

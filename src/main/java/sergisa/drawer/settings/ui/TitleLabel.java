@@ -1,4 +1,4 @@
-package sergisa.drawer.ui;
+package sergisa.drawer.settings.ui;
 
 import javax.swing.*;
 import java.awt.*;
