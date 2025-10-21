@@ -19,6 +19,7 @@ public class FigureView extends JFrame {
     private JButton showSettingsButton;
     private JToolBar toolbar;
     private JToggleButton gridToggleButton;
+    private JButton resetButton;
     SettingsForm settingsForm;
 
     public FigureView() {
@@ -50,6 +51,10 @@ public class FigureView extends JFrame {
                 }
                 repaint();
             }
+        });
+        resetButton.addActionListener(e -> {
+            canvas1.resetCoordinates();
+            canvas1.resetScale();
         });
         gridToggleButton.addActionListener(new ActionListener() {
             @Override
@@ -87,6 +92,9 @@ public class FigureView extends JFrame {
         toolbar.add(showSettingsButton);
         gridToggleButton = new JToggleButton();
         toolbar.add(gridToggleButton);
+        resetButton = new JButton();
+        resetButton.setText("сбросить");
+        toolbar.add(resetButton);
     }
 
     /**

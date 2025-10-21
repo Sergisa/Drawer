@@ -1,14 +1,13 @@
 package sergisa.drawer;
 
 
-import sergisa.drawer.geometry.PlacementAdapter;
 import sergisa.drawer.settings.Settings;
 
 import javax.swing.*;
-import javax.swing.event.MouseInputAdapter;
 import java.awt.*;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseWheelEvent;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Point2D;
 import java.awt.geom.RectangularShape;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
@@ -26,23 +25,25 @@ public class Canvas extends JPanel {
     Color objectColor = Colors.Blue;
     Settings settings = Settings.getInstance();
     List<RectangularShape> drawingObjects;
+    Rectangle selectionRectanglePhantom;
     Shape focusedObject;
-    private int scale = 1;
+    private double scale = 1;
+    private Point2D.Double coordinateShift;
+    UnShiftScaleAdapter shiftScaleAdapter;
 
     public Canvas() {
         setBackground(backgroundColor);
         setFocusable(true);
-        DragListener dragListener = new DragListener();
-        addMouseListener(dragListener);
-        addMouseMotionListener(dragListener);
-        addMouseWheelListener(dragListener);
+        shiftScaleAdapter = new UnShiftScaleAdapter(1, 0, 0);
+        new MyCanvasMouseAdapter(this);
+        coordinateShift = new Point2D.Double(0, 0);
         drawingObjects = new ArrayList<>();
         RoundRectangle2D.Double rectangle = new RoundRectangle2D.Double(50, 200, 50, 80, 9, 9);
         RoundRectangle2D.Double rectangle2 = new RoundRectangle2D.Double(200, 300, 50, 80, 9, 9);
         drawingObjects.add(rectangle);
         drawingObjects.add(rectangle2);
 
-        updateOpts();
+        updateSettingsParameters();
         setLayout(null);
         if (settings.getBoolean("cursor.show")) {
             setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
@@ -55,7 +56,7 @@ public class Canvas extends JPanel {
         }
     }
 
-    private void updateOpts() {
+    private void updateSettingsParameters() {
         showCrosshair = settings.getBoolean("crosshair.show");
         showGrid = settings.getBoolean("grid.show");
     }
@@ -64,19 +65,45 @@ public class Canvas extends JPanel {
     public synchronized void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
-        updateOpts();
+        updateSettingsParameters();
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        AffineTransform oldTransform = g2d.getTransform();
         if (showGrid) paintGrid(g);
+        g.translate((int) coordinateShift.x, (int) coordinateShift.y);
         g2d.scale(scale, scale);
+
         for (Shape drawingObject : drawingObjects) {
+            Shape oldClip = g2d.getClip();
+            Rectangle clippingRect = drawingObject.getBounds();
+            clippingRect.grow(5, 5);
+            g2d.clipRect(clippingRect.x, clippingRect.y, clippingRect.width, clippingRect.height);
+
             g.setColor(objectColor);
             g2d.fill(drawingObject);
-
             g.setColor(Colors.Red);
             g2d.draw(drawingObject);
+
+            g2d.setClip(oldClip);
+        }
+        g2d.setTransform(oldTransform);
+        if (selectionRectanglePhantom != null) {
+            paintSelection(g2d);
         }
         if (showCrosshair && cross != null) cross.paint(g);
+    }
+
+    private void paintSelection(Graphics2D g2d) {
+        BasicStroke SELECTION_RECTANGLE_STROKE = new BasicStroke(2f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{3}, 0);
+
+        Color SELECTION_RECTANGLE_LINE_COLOR = Colors.Blue;
+        Color SELECTION_RECTANGLE_BACKGROUND = new Color(53, 53, 53, 15);
+        g2d.setColor(SELECTION_RECTANGLE_BACKGROUND);
+        g2d.fillRect(selectionRectanglePhantom.x, selectionRectanglePhantom.y, selectionRectanglePhantom.width, selectionRectanglePhantom.height);
+        g2d.setColor(SELECTION_RECTANGLE_LINE_COLOR);
+        g2d.setStroke(SELECTION_RECTANGLE_STROKE);
+        g2d.draw(selectionRectanglePhantom);
     }
 
     public void paintGrid(Graphics g) {
@@ -114,22 +141,9 @@ public class Canvas extends JPanel {
         super.processMouseEvent(evt);
     }
 
-    public boolean isShowCrosshair() {
-        return showCrosshair;
-    }
-
     public void setShowCrosshair(boolean showCrosshair) {
         this.showCrosshair = showCrosshair;
         if (!showCrosshair) repaint();
-    }
-
-    public boolean isShowGrid() {
-        return showGrid;
-    }
-
-    public void setShowGrid(boolean showGrid) {
-        this.showGrid = showGrid;
-        repaint();
     }
 
     public RectangularShape getNodeAtPosition(int x, int y) {
@@ -147,56 +161,106 @@ public class Canvas extends JPanel {
         shape.setFrame(oldBounds);
     }
 
-    public class DragListener extends MouseInputAdapter {
-        Point lastPressPoint;
-        RectangularShape draggingElement;
-        PlacementAdapter adapter;
+    public double getScale() {
+        return scale;
+    }
 
-        public DragListener() {
+    public void setScale(double scale) {
+        this.scale = scale;
+        shiftScaleAdapter.setScale(scale);
+    }
 
+    public void setCoordinateShift(int x, int y) {
+        coordinateShift.setLocation(x, y);
+        shiftScaleAdapter.setShiftX(x);
+        shiftScaleAdapter.setShiftY(y);
+    }
+
+    public Point2D.Double getCoordinateShift() {
+        return coordinateShift;
+    }
+
+
+    public Rectangle getSelectionRectanglePhantom() {
+        return selectionRectanglePhantom;
+    }
+
+    public void resetCoordinates() {
+        coordinateShift = new Point2D.Double(0, 0);
+        repaint();
+    }
+
+    public void resetScale() {
+        scale = 1;
+        repaint();
+    }
+
+    public UnShiftScaleAdapter getShiftScaleAdapter() {
+        return shiftScaleAdapter;
+    }
+
+    private class MyCanvasMouseAdapter extends CanvasMouseAdapter {
+
+        public MyCanvasMouseAdapter(Canvas mainCanvas,UnShiftScaleAdapter adapter) {
+            super(mainCanvas, adapter);
         }
 
-        @Override
-        public void mouseClicked(MouseEvent e) {
-            //nodeManager.setActiveElement(nodeManager.getNodeAtPosition(e.getPoint()));
-            super.mouseClicked(e);
-        }
-
-        public void mousePressed(MouseEvent evt) {
-            lastPressPoint = evt.getPoint();
-            draggingElement = getNodeAtPosition(evt.getX(), evt.getY());
-        }
-
-        @Override
-        public void mouseMoved(MouseEvent e) {
-
-        }
-
-        public void mouseDragged(MouseEvent e) {
-            int dx = e.getX() - lastPressPoint.x;
-            int dy = e.getY() - lastPressPoint.y;
-            if (SwingUtilities.isRightMouseButton(e)) {
-                System.out.print("MOVE");
-            } else if (SwingUtilities.isLeftMouseButton(e)) {
-                if (draggingElement != null) {
-                    shiftShape(draggingElement, dx, dy);
-                    repaint();
-                }
-            }
-            lastPressPoint = e.getPoint();
-        }
-
-        @Override
-        public void mouseReleased(MouseEvent e) {
-            super.mouseReleased(e);
-        }
-
-        @Override
-        public void mouseWheelMoved(MouseWheelEvent e) {
-            int scr = e.getUnitsToScroll();
-            scale += scr;
+        public void onNodeDragging(MouseEvent event) {
+            System.out.println("NodeDrag");
+            int dx = event.getX() - lastPressPoint.x;
+            int dy = event.getY() - lastPressPoint.y;
+            shiftShape(hittedElement, dx, dy);
+            lastPressPoint = event.getPoint();
             repaint();
-            super.mouseWheelMoved(e);
+        }
+
+        public void onStartedSelection(MouseEvent event) {
+            selectionRectanglePhantom = new Rectangle(event.getPoint());
+        }
+
+        public void onExtendedSelection(MouseEvent event) {
+            int x0, y0, x1, y1;
+            x0 = Math.min(lastPressPoint.x, event.getPoint().x);
+            y0 = Math.min(lastPressPoint.y, event.getPoint().y);
+            x1 = Math.max(lastPressPoint.x, event.getPoint().x);
+            y1 = Math.max(lastPressPoint.y, event.getPoint().y);
+            selectionRectanglePhantom.setBounds(x0, y0, x1 - x0, y1 - y0);
+            repaint();
+        }
+
+        public void onEndSelection(Rectangle selectionRectangle) {
+            System.out.println("Selection Ended");
+            selectionRectanglePhantom = null;
+            repaint();
+        }
+
+        @Override
+        public void onPaneScrolling(int dx, int dy) {
+            setCoordinateShift(
+                    (int) coordinateShift.x + dx,
+                    (int) coordinateShift.y + dy
+            );
+            repaint();
+        }
+
+        @Override
+        public void onZoomingIn(MouseEvent event) {
+            mainCanvas.setScale((mainCanvas.getScale() / scaleFactor));
+            setCoordinateShift(
+                    (int) (coordinateShift.x / scaleFactor),
+                    (int) (coordinateShift.y / scaleFactor)
+            );
+            repaint();
+        }
+
+        @Override
+        public void onZoomingOut(MouseEvent event) {
+            mainCanvas.setScale((mainCanvas.getScale() * scaleFactor));
+            setCoordinateShift(
+                    (int) (coordinateShift.x * scaleFactor),
+                    (int) (coordinateShift.y * scaleFactor)
+            );
+            repaint();
         }
     }
 }
