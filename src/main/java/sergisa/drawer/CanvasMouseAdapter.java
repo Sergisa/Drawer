@@ -27,7 +27,7 @@ public class CanvasMouseAdapter {
     public void onStartedNodeDrag(MouseEvent event) {
     }
 
-    public void onNodeDragging(MouseEvent event) {
+    public void onNodeDragging(MouseEvent event, int dx, int dy) {
     }
 
     public void onFinishedNodeDragging(MouseEvent event) {
@@ -56,7 +56,9 @@ public class CanvasMouseAdapter {
 
     private class SimpleMouseAdapter extends MouseInputAdapter {
         public void mousePressed(MouseEvent evt) {
-            lastPressPoint = adapter.adaptPoint(evt.getPoint());
+            lastPressPoint = (evt.getPoint());
+            System.out.print("Pressed: " + evt.getPoint());
+            System.out.println("Adapted point: " + adapter.adaptPoint(evt.getPoint()));
             hittedElement = mainCanvas.getNodeAtPosition(
                     adapter.adaptPoint(evt.getPoint()).x,
                     adapter.adaptPoint(evt.getPoint()).y
@@ -75,7 +77,11 @@ public class CanvasMouseAdapter {
         public void mouseDragged(MouseEvent event) {
             if (SwingUtilities.isLeftMouseButton(event)) {
                 if (hittedElement != null) {
-                    onNodeDragging(event);
+                    onNodeDragging(event,
+                            event.getX() - lastPressPoint.x,
+                            event.getY() - lastPressPoint.y
+                    );
+
                 } else if (mainCanvas.getSelectionRectanglePhantom() != null) {
                     onExtendedSelection(event);
                 }

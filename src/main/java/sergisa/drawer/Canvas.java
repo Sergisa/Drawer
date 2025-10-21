@@ -186,12 +186,12 @@ public class Canvas extends JPanel {
     }
 
     public void resetCoordinates() {
-        coordinateShift = new Point2D.Double(0, 0);
+        setCoordinateShift(0,0);
         repaint();
     }
 
     public void resetScale() {
-        scale = 1;
+        setScale(1);
         repaint();
     }
 
@@ -205,10 +205,9 @@ public class Canvas extends JPanel {
             super(mainCanvas, adapter);
         }
 
-        public void onNodeDragging(MouseEvent event) {
+        public void onNodeDragging(MouseEvent event, int dx, int dy) {
+            //зацепляется только после смещения координат
             System.out.println("NodeDrag");
-            int dx = event.getX() - lastPressPoint.x;
-            int dy = event.getY() - lastPressPoint.y;
             shiftShape(hittedElement, dx, dy);
             lastPressPoint = event.getPoint();
             repaint();
