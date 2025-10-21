@@ -24,7 +24,6 @@ public class CanvasMouseAdapter {
         mainCanvas.addMouseWheelListener(mouseAdapter);
     }
 
-
     public void onStartedNodeDrag(MouseEvent event) {
     }
 
@@ -57,8 +56,11 @@ public class CanvasMouseAdapter {
 
     private class SimpleMouseAdapter extends MouseInputAdapter {
         public void mousePressed(MouseEvent evt) {
-            lastPressPoint = evt.getPoint();
-            hittedElement = mainCanvas.getNodeAtPosition(evt.getX(), evt.getY());
+            lastPressPoint = adapter.adaptPoint(evt.getPoint());
+            hittedElement = mainCanvas.getNodeAtPosition(
+                    adapter.adaptPoint(evt.getPoint()).x,
+                    adapter.adaptPoint(evt.getPoint()).y
+            );
             if (SwingUtilities.isLeftMouseButton(evt)) {
                 if (hittedElement != null) {
                     onStartedNodeDrag(evt);
@@ -70,45 +72,43 @@ public class CanvasMouseAdapter {
             }
         }
 
-        @Override
-        public void mouseClicked(MouseEvent e) {
-            super.mouseClicked(e);
-        }
-
-        public void mouseDragged(MouseEvent e) {
-            if (SwingUtilities.isLeftMouseButton(e)) {
+        public void mouseDragged(MouseEvent event) {
+            if (SwingUtilities.isLeftMouseButton(event)) {
                 if (hittedElement != null) {
-                    onNodeDragging(e);
+                    onNodeDragging(event);
                 } else if (mainCanvas.getSelectionRectanglePhantom() != null) {
-                    onExtendedSelection(e);
+                    onExtendedSelection(event);
                 }
-            } else if (SwingUtilities.isRightMouseButton(e)) {
-                onPaneScrolling(e.getPoint().x - lastPressPoint.x, e.getPoint().y - lastPressPoint.y);
-                lastPressPoint = e.getPoint();
+            } else if (SwingUtilities.isRightMouseButton(event)) {
+                onPaneScrolling(
+                        event.getPoint().x - lastPressPoint.x,
+                        event.getPoint().y - lastPressPoint.y
+                );
+                lastPressPoint = event.getPoint();
             }
 
         }
 
         @Override
-        public void mouseReleased(MouseEvent e) {
+        public void mouseReleased(MouseEvent event) {
             if (hittedElement != null) {
-                onFinishedNodeDragging(e);
+                onFinishedNodeDragging(event);
             } else if (mainCanvas.getSelectionRectanglePhantom() != null) {
                 onEndSelection(mainCanvas.getSelectionRectanglePhantom());
             }
         }
 
         @Override
-        public void mouseWheelMoved(MouseWheelEvent e) {
-            mainCanvas.getCoordinateShift().x -= e.getX();
-            mainCanvas.getCoordinateShift().y -= e.getY();
-            if (e.getWheelRotation() == 1) {
-                onZoomingIn(e);
+        public void mouseWheelMoved(MouseWheelEvent event) {
+            mainCanvas.getCoordinateShift().x -= event.getX();
+            mainCanvas.getCoordinateShift().y -= event.getY();
+            if (event.getWheelRotation() == 1) {
+                onZoomingIn(event);
             } else {
-                onZoomingOut(e);
+                onZoomingOut(event);
             }
-            mainCanvas.getCoordinateShift().x += e.getX();
-            mainCanvas.getCoordinateShift().y += e.getY();
+            mainCanvas.getCoordinateShift().x += event.getX();
+            mainCanvas.getCoordinateShift().y += event.getY();
         }
     }
 }

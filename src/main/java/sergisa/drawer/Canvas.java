@@ -35,7 +35,7 @@ public class Canvas extends JPanel {
         setBackground(backgroundColor);
         setFocusable(true);
         shiftScaleAdapter = new UnShiftScaleAdapter(1, 0, 0);
-        new MyCanvasMouseAdapter(this);
+        new MyCanvasMouseAdapter(this, shiftScaleAdapter);
         coordinateShift = new Point2D.Double(0, 0);
         drawingObjects = new ArrayList<>();
         RoundRectangle2D.Double rectangle = new RoundRectangle2D.Double(50, 200, 50, 80, 9, 9);
@@ -201,7 +201,7 @@ public class Canvas extends JPanel {
 
     private class MyCanvasMouseAdapter extends CanvasMouseAdapter {
 
-        public MyCanvasMouseAdapter(Canvas mainCanvas,UnShiftScaleAdapter adapter) {
+        public MyCanvasMouseAdapter(Canvas mainCanvas, UnShiftScaleAdapter adapter) {
             super(mainCanvas, adapter);
         }
 
