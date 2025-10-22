@@ -56,9 +56,7 @@ public class CanvasMouseAdapter {
 
     private class SimpleMouseAdapter extends MouseInputAdapter {
         public void mousePressed(MouseEvent evt) {
-            lastPressPoint = (evt.getPoint());
-            System.out.print("Pressed: " + evt.getPoint());
-            System.out.println("Adapted point: " + adapter.adaptPoint(evt.getPoint()));
+            lastPressPoint = evt.getPoint();
             hittedElement = mainCanvas.getNodeAtPosition(
                     adapter.adaptPoint(evt.getPoint()).x,
                     adapter.adaptPoint(evt.getPoint()).y
@@ -74,12 +72,27 @@ public class CanvasMouseAdapter {
             }
         }
 
+        @Override
+        public void mouseClicked(MouseEvent e) {
+            RectangularShape clickedElement = mainCanvas.getNodeAtPosition(
+                    adapter.adaptPoint(e.getPoint()).x,
+                    adapter.adaptPoint(e.getPoint()).y
+            );
+            if (clickedElement != null) {
+                System.out.println("Node Clicked: " + clickedElement);
+            } else {
+                System.out.print("Mouse Click: " + e.getPoint());
+                System.out.println("Adapted point: " + adapter.adaptPoint(e.getPoint()));
+            }
+        }
+
         public void mouseDragged(MouseEvent event) {
             if (SwingUtilities.isLeftMouseButton(event)) {
+                //NOTE: адаптируем при перемещении координаты в шкалу
                 if (hittedElement != null) {
                     onNodeDragging(event,
-                            event.getX() - lastPressPoint.x,
-                            event.getY() - lastPressPoint.y
+                            adapter.adaptPoint(event.getPoint()).x - adapter.adaptPoint(lastPressPoint).x,
+                            adapter.adaptPoint(event.getPoint()).y - adapter.adaptPoint(lastPressPoint).y
                     );
 
                 } else if (mainCanvas.getSelectionRectanglePhantom() != null) {
@@ -106,15 +119,19 @@ public class CanvasMouseAdapter {
 
         @Override
         public void mouseWheelMoved(MouseWheelEvent event) {
-            mainCanvas.getCoordinateShift().x -= event.getX();
-            mainCanvas.getCoordinateShift().y -= event.getY();
+            mainCanvas.setCoordinateShift(
+                    (int) (mainCanvas.getCoordinateShift().x - event.getX()),
+                    (int) (mainCanvas.getCoordinateShift().y - event.getY())
+            );
             if (event.getWheelRotation() == 1) {
                 onZoomingIn(event);
             } else {
                 onZoomingOut(event);
             }
-            mainCanvas.getCoordinateShift().x += event.getX();
-            mainCanvas.getCoordinateShift().y += event.getY();
+            mainCanvas.setCoordinateShift(
+                    (int) (mainCanvas.getCoordinateShift().x + event.getX()),
+                    (int) (mainCanvas.getCoordinateShift().y + event.getY())
+            );
         }
     }
 }

@@ -186,7 +186,7 @@ public class Canvas extends JPanel {
     }
 
     public void resetCoordinates() {
-        setCoordinateShift(0,0);
+        setCoordinateShift(0, 0);
         repaint();
     }
 
@@ -207,7 +207,6 @@ public class Canvas extends JPanel {
 
         public void onNodeDragging(MouseEvent event, int dx, int dy) {
             //зацепляется только после смещения координат
-            System.out.println("NodeDrag");
             shiftShape(hittedElement, dx, dy);
             lastPressPoint = event.getPoint();
             repaint();
@@ -244,7 +243,7 @@ public class Canvas extends JPanel {
 
         @Override
         public void onZoomingIn(MouseEvent event) {
-            mainCanvas.setScale((mainCanvas.getScale() / scaleFactor));
+            setScale((mainCanvas.getScale() / scaleFactor));
             setCoordinateShift(
                     (int) (coordinateShift.x / scaleFactor),
                     (int) (coordinateShift.y / scaleFactor)
@@ -254,7 +253,7 @@ public class Canvas extends JPanel {
 
         @Override
         public void onZoomingOut(MouseEvent event) {
-            mainCanvas.setScale((mainCanvas.getScale() * scaleFactor));
+            setScale((mainCanvas.getScale() * scaleFactor));
             setCoordinateShift(
                     (int) (coordinateShift.x * scaleFactor),
                     (int) (coordinateShift.y * scaleFactor)
